@@ -1,0 +1,11 @@
+{
+  "name": "travleh",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Travle, maar dan met de gemeentes van West-Vlaanderen",
+  "type": "module",
+  "scripts": {
+    "data": "node scripts/build-data.mjs",
+    "dev": "npx --yes serve public -l 3000"
+  }
+}

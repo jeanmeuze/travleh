@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>travleh – reis door West-Vlaanderen</title>
+  <meta name="description" content="Dagelijkse puzzel: vind de kortste route tussen twee West-Vlaamse gemeentes via buurgemeentes." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <h1 id="title">Vandaag wil ik <b>travleh</b> van <span class="start" id="startName">…</span> naar <span class="end" id="endName">…</span></h1>
+      <nav class="links">
+        <button class="link" id="helpBtn" type="button"><span class="ico">?</span> Help</button>
+        <button class="link" id="shareRouteBtn" type="button"><span class="ico">➤</span> Stuur deze route naar een vriend</button>
+        <button class="link" id="newBtn" type="button"><span class="ico">↻</span> Oefenroute</button>
+      </nav>
+    </header>
+
+    <section class="mapbox">
+      <svg id="map" xmlns="http://www.w3.org/2000/svg" aria-label="Kaart van West-Vlaanderen"></svg>
+      <div class="zoom">
+        <button type="button" id="zoomIn" aria-label="Inzoomen">+</button>
+        <button type="button" id="zoomOut" aria-label="Uitzoomen">−</button>
+        <button type="button" id="zoomFit" aria-label="Passend maken">⤢</button>
+      </div>
+      <div class="brand">travleh</div>
+    </section>
+
+    <section class="play" id="play">
+      <form id="guessForm" autocomplete="off">
+        <div class="ac">
+          <input id="guess" type="text" placeholder="Typ een gemeente…" aria-label="Gemeente" spellcheck="false" />
+          <ul id="suggest" class="suggest" hidden></ul>
+        </div>
+        <button type="submit" class="btn primary">Raad</button>
+      </form>
+      <div class="meta">
+        <span id="counter"></span>
+        <span>
+          <button class="link small" id="hintBtn" type="button">Hint</button>
+          <button class="link small" id="giveUpBtn" type="button">Geef op</button>
+        </span>
+      </div>
+      <p id="msg" class="msg" role="status"></p>
+      <ol id="guessList" class="guesses"></ol>
+    </section>
+
+    <section class="result" id="result" hidden>
+      <h2 id="resultTitle"></h2>
+      <p id="resultText"></p>
+      <p class="squares" id="squares"></p>
+      <div class="row">
+        <button class="btn primary" id="shareResultBtn" type="button">Deel resultaat</button>
+        <button class="btn" id="againBtn" type="button">Oefenroute</button>
+      </div>
+      <p class="small muted" id="stats"></p>
+    </section>
+
+    <footer class="muted small">
+      Geïnspireerd door <a href="https://travle.earth" target="_blank" rel="noopener">travle</a>.
+      Gemeentegrenzen: <a href="https://www.vlaanderen.be/digitaal-vlaanderen" target="_blank" rel="noopener">Digitaal Vlaanderen</a> (VRBG, toestand 01/01/2025).
+    </footer>
+  </main>
+
+  <dialog id="help">
+    <h2>Hoe speel je travleh?</h2>
+    <p>Je krijgt elke dag twee West-Vlaamse gemeentes. Verbind ze door gemeentes te raden die er <b>tussen</b> liggen, zodat je via buurgemeentes van de ene naar de andere kan reizen – met zo weinig mogelijk grensovergangen.</p>
+    <p>Kleuren van je gok:</p>
+    <ul class="legend">
+      <li><i class="sw g1"></i> ligt op een kortste route</li>
+      <li><i class="sw g2"></i> één omweg</li>
+      <li><i class="sw g3"></i> twee omwegen</li>
+      <li><i class="sw g4"></i> ver van de route</li>
+    </ul>
+    <p>Twee gemeentes zijn buren als ze een gemeentegrens delen (een raakpunt telt niet). We gebruiken de gemeentes van na de fusies van 1 januari 2025.</p>
+    <p>Je hebt een beperkt aantal gokken. Een nieuwe dagroute verschijnt om middernacht. Met <b>Oefenroute</b> speel je zoveel je wil.</p>
+    <form method="dialog"><button class="btn primary">Begrepen</button></form>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
