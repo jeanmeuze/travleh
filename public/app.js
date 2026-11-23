@@ -309,7 +309,32 @@ function render(flashId) {
 }
 
 const EMOJI = ['', '🟩', '🟨', '🟧', '🟥'];
-function squares() { return game.guesses.map((id) => EMOJI[scoreOf(id)]).join(''); }
+// ✅ = juiste gemeente in de juiste volgorde: ligt op een kortste route én sluit op het moment
+//      van raden aan op de keten vanaf het vertrek- of eindpunt.
+// 🟩 = juiste gemeente, maar in de verkeerde volgorde (nog los van de keten).
+function reach(from, S) {
+  const seen = new Set([from]);
+  const q = [from];
+  while (q.length) {
+    const c = q.shift();
+    for (const n of byId.get(c).n) if (S.has(n) && !seen.has(n)) { seen.add(n); q.push(n); }
+  }
+  return seen;
+}
+function marks() {
+  const S = new Set([game.start, game.end]);
+  return game.guesses.map((id) => {
+    const sc = scoreOf(id);
+    let e = EMOJI[sc];
+    if (sc === 1) {
+      const chain = new Set([...reach(game.start, S), ...reach(game.end, S)]);
+      if (byId.get(id).n.some((n) => chain.has(n))) e = '✅';
+    }
+    S.add(id);
+    return e;
+  });
+}
+function squares() { return marks().join(''); }
 
 function finish() {
   const optimal = game.D - 1;
@@ -349,10 +374,11 @@ function finish() {
 }
 
 function shareText() {
-  const head = game.mode === 'daily' ? `#travleh #${dayNumber(game.day)}` : '#travleh oefenroute';
-  const res = game.won ? `${game.guesses.length}/${game.maxGuesses} (min. ${game.D - 1})` : `X/${game.maxGuesses}`;
-  const hints = game.hints ? ` · ${game.hints} hint${game.hints > 1 ? 's' : ''}` : '';
-  return `${head}\n${byId.get(game.start).name} → ${byId.get(game.end).name}\n${squares()}\n${res}${hints}\n${location.origin}${location.pathname}`;
+  const tag = game.mode === 'daily' ? `#travleh #${dayNumber(game.day)}` : `#travleh ${byId.get(game.start).name} → ${byId.get(game.end).name}`;
+  const extra = game.guesses.length - (game.D - 1);
+  const res = game.won ? (extra === 0 ? '(perfect)' : `+${extra}`) : '❌';
+  const hints = game.hints ? ` (${game.hints} hint${game.hints > 1 ? 's' : ''})` : '';
+  return `${tag} ${res}${hints}\n${squares()}\n${location.origin}${location.pathname}`;
 }
 async function share(text) {
   try {
