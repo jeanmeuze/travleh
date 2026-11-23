@@ -130,15 +130,23 @@ function bestPath() {
 const svg = $('map');
 const pathEls = new Map();
 const labelLayer = document.createElementNS(SVGNS, 'g');
+// Onderste laag: buitengrens van de provincie (dikke lijn rond alle gemeentes;
+// de binnengrenzen worden afgedekt door de gevulde laag erboven).
+const outline = document.createElementNS(SVGNS, 'path');
+outline.setAttribute('d', M.map((m) => m.d).join(''));
+outline.setAttribute('class', 'outline');
+svg.appendChild(outline);
+const hiddenLayer = document.createElementNS(SVGNS, 'g');
+const shownLayer = document.createElementNS(SVGNS, 'g');
+svg.append(hiddenLayer, shownLayer, labelLayer);
 for (const m of M) {
   const p = document.createElementNS(SVGNS, 'path');
   p.setAttribute('d', m.d);
   p.setAttribute('class', 'm hidden');
   p.dataset.id = m.id;
-  svg.appendChild(p);
+  hiddenLayer.appendChild(p);
   pathEls.set(m.id, p);
 }
-svg.appendChild(labelLayer);
 
 let vb = { x: 0, y: 0, w: data.width, h: data.height };
 let anim;
@@ -213,6 +221,9 @@ function renderMap(flashId) {
     else if (revealed.includes(id)) cls = 'm reveal';
     if (id === flashId) cls += ' flash';
     el.setAttribute('class', cls);
+    // getoonde gemeentes bovenop, zodat hun grenzen zichtbaar blijven
+    const layer = cls.startsWith('m hidden') ? hiddenLayer : shownLayer;
+    if (el.parentNode !== layer) layer.appendChild(el);
   }
   labelLayer.replaceChildren();
   for (const id of visibleIds()) {

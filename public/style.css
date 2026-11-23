@@ -4,6 +4,7 @@
   --sea: #3a3530;
   --other: #2f2b28;
   --other-line: #4a443e;
+  --outline: #6b6258;
   --land: #dcc69c;
   --text: #e9e1d2;
   --muted: #9f978a;
@@ -36,7 +37,8 @@ a { color: var(--end); }
 #map { display: block; width: 100%; aspect-ratio: 5 / 4; max-height: 62vh; cursor: grab; }
 #map.dragging { cursor: grabbing; }
 #map path.m { stroke: var(--line); stroke-width: 1.2; vector-effect: non-scaling-stroke; transition: fill .4s; }
-#map path.hidden { fill: var(--other); stroke: var(--other-line); stroke-width: .7; }
+#map path.outline { fill: var(--other); stroke: var(--outline); stroke-width: 3; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+#map path.hidden { fill: var(--other); stroke: var(--other); stroke-width: 1.6; stroke-linejoin: round; transition: none; }
 #map path.start { fill: var(--start); }
 #map path.end { fill: var(--end); }
 #map path.g1, #map path.g2, #map path.g3, #map path.g4, #map path.reveal { fill: var(--land); }
