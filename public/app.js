@@ -4,8 +4,17 @@ const SVGNS = 'http://www.w3.org/2000/svg';
 const EPOCH = '2026-11-23'; // dag #1
 const EXTRA_GUESSES = 4;
 const STORE = 'travleh:v1';
+// Verjaardag Jan: vaste opdrachten op /verjaardagjan/1 … /verjaardagjan/5
+const JAN = [
+  ['Wervik', 'Roeselare'],
+  ['Roeselare', 'De Panne'],
+  ['De Panne', 'Beernem'],
+  ['Beernem', 'Zonnebeke'],
+  ['Zonnebeke', 'Harelbeke'],
+];
+const JAN_BASE = '/verjaardagjan';
 
-const data = await fetch('data.json').then((r) => r.json());
+const data = await fetch('/data.json').then((r) => r.json());
 const M = data.municipalities;
 const byId = new Map(M.map((m) => [m.id, m]));
 const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]/g, '');
@@ -71,6 +80,17 @@ function newGame({ start, end, mode, day }) {
 }
 
 function initFromUrl() {
+  const jm = location.pathname.match(/^\/verjaardagjan(?:\/(\d+))?\/?$/i);
+  if (jm) {
+    let lvl = Number(jm[1] || 1);
+    if (!(lvl >= 1 && lvl <= JAN.length)) lvl = 1;
+    if (location.pathname !== `${JAN_BASE}/${lvl}`) history.replaceState(null, '', `${JAN_BASE}/${lvl}`);
+    const [start, end] = JAN[lvl - 1].map((n) => byNorm.get(norm(n)).id);
+    const saved = load().jan?.[lvl];
+    if (saved && saved.start === start && saved.end === end) game = saved;
+    else newGame({ start, end, mode: 'jan', day: lvl });
+    return;
+  }
   const p = new URLSearchParams(location.search);
   const van = p.get('van') && byNorm.get(norm(p.get('van')));
   const naar = p.get('naar') && byNorm.get(norm(p.get('naar')));
@@ -89,6 +109,14 @@ function initFromUrl() {
 }
 
 function persist() {
+  if (game.mode === 'jan') {
+    const st = load();
+    st.jan = st.jan || {};
+    st.jan[game.day] = game;
+    save(st);
+    renderJanNav();
+    return;
+  }
   if (game.mode !== 'daily') return;
   const st = load();
   st.daily = game;
@@ -361,6 +389,12 @@ function finish() {
     ? `Je reisde van ${byId.get(game.start).name} naar ${byId.get(game.end).name} met ${game.guesses.length} ${game.guesses.length === 1 ? 'gok' : 'gokken'} (minimum ${optimal}). Een kortste route: ${route}.`
     : `Een kortste route was: ${route}.`;
   $('squares').textContent = squares();
+  if (game.mode === 'jan') {
+    const next = game.day + 1;
+    $('nextBtn').hidden = next > JAN.length;
+    $('nextBtn').href = `${JAN_BASE}/${next}`;
+    if (next > JAN.length) $('resultTitle').textContent += ' Alle opdrachten gedaan – gelukkige verjaardag, Jan! 🎂';
+  } else $('nextBtn').hidden = true;
   $('msg').textContent = '';
   setTimeout(() => $('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 300);
   if (game.mode === 'daily' && !game.statsCounted) {
@@ -385,7 +419,9 @@ function finish() {
 }
 
 function shareText() {
-  const tag = game.mode === 'daily' ? `#travleh #${dayNumber(game.day)}` : `#travleh ${byId.get(game.start).name} → ${byId.get(game.end).name}`;
+  const tag = game.mode === 'daily' ? `#travleh #${dayNumber(game.day)}`
+    : game.mode === 'jan' ? `#travleh 🎂 Jan ${game.day}/${JAN.length}`
+    : `#travleh ${byId.get(game.start).name} → ${byId.get(game.end).name}`;
   const extra = game.guesses.length - (game.D - 1);
   const res = game.won ? (extra === 0 ? '(perfect)' : `+${extra}`) : '❌';
   const hints = game.hints ? ` (${game.hints} hint${game.hints > 1 ? 's' : ''})` : '';
@@ -402,7 +438,7 @@ async function share(text) {
 }
 $('shareResultBtn').onclick = () => share(shareText());
 $('shareRouteBtn').onclick = () => {
-  const u = new URL(location.origin + location.pathname);
+  const u = new URL(location.origin + (game.mode === 'jan' ? '/' : location.pathname));
   u.searchParams.set('van', byId.get(game.start).name);
   u.searchParams.set('naar', byId.get(game.end).name);
   share(`Kan jij met travleh van ${byId.get(game.start).name} naar ${byId.get(game.end).name} reizen? ${u}`);
@@ -413,6 +449,7 @@ function practice() {
   history.replaceState(null, '', location.pathname);
   newGame({ start, end, mode: 'practice' });
   revealed = [];
+  $('janNav').hidden = true;
   $('result').hidden = true;
   msg('Oefenroute – telt niet mee voor je statistieken.');
   render();
@@ -443,12 +480,32 @@ $('giveUpBtn').onclick = () => {
 $('helpBtn').onclick = () => $('help').showModal();
 window.addEventListener('resize', () => fitTo(visibleIds(), false));
 
+function renderJanNav() {
+  const nav = $('janNav');
+  if (game.mode !== 'jan') { nav.hidden = true; return; }
+  const st = load().jan || {};
+  const lbl = document.createElement('span');
+  lbl.className = 'lbl';
+  lbl.textContent = '🎂 Verjaardag Jan · opdracht';
+  nav.replaceChildren(lbl, ...JAN.map((_, i) => {
+    const a = document.createElement('a');
+    a.href = `${JAN_BASE}/${i + 1}`;
+    a.textContent = st[i + 1]?.won ? '✓' + (i + 1) : String(i + 1);
+    if (st[i + 1]?.won) a.classList.add('done');
+    if (i + 1 === game.day) a.classList.add('cur');
+    return a;
+  }));
+  nav.hidden = false;
+}
+
 // ---------- start ----------
 initFromUrl();
+renderJanNav();
 setVB(vb);
 render();
 fitTo(visibleIds(), false);
 if (game.done) finish();
+else if (game.mode === 'jan') msg(`Opdracht ${game.day} van ${JAN.length} – gelukkige verjaardag, Jan!`);
 else if (game.mode === 'custom') msg('Route van een vriend – telt niet mee voor je statistieken.');
 const st = load();
 if (!st.seenHelp) { $('help').showModal(); st.seenHelp = true; save(st); }

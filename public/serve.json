@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/verjaardagjan", "destination": "/index.html" },
+    { "source": "/verjaardagjan/:n", "destination": "/index.html" }
+  ]
+}

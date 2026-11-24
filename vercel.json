@@ -2,5 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "",
   "outputDirectory": "public",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/verjaardagjan", "destination": "/index.html" },
+    { "source": "/verjaardagjan/:n", "destination": "/index.html" }
+  ]
 }

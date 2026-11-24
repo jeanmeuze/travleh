@@ -6,11 +6,12 @@
   <title>travleh – reis door West-Vlaanderen</title>
   <meta name="description" content="Dagelijkse puzzel: vind de kortste route tussen twee West-Vlaamse gemeentes via buurgemeentes." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <main class="wrap">
     <header>
+      <nav class="jan" id="janNav" hidden></nav>
       <h1 id="title">Vandaag wil ik <b>travleh</b> van <span class="start" id="startName">…</span> naar <span class="end" id="endName">…</span></h1>
       <nav class="links">
         <button class="link" id="helpBtn" type="button"><span class="ico">?</span> Help</button>
@@ -53,6 +54,7 @@
       <p id="resultText"></p>
       <p class="squares" id="squares"></p>
       <div class="row">
+        <a class="btn primary" id="nextBtn" href="#" hidden>Volgende opdracht →</a>
         <button class="btn primary" id="shareResultBtn" type="button">Deel resultaat</button>
         <button class="btn" id="againBtn" type="button">Oefenroute</button>
       </div>
@@ -82,6 +84,6 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script src="app.js" type="module"></script>
+  <script src="/app.js" type="module"></script>
 </body>
 </html>
