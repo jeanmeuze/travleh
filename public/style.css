@@ -103,6 +103,6 @@ a.btn { text-decoration: none; display: inline-block; }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 dialog.baby { text-align: center; }
 dialog.baby h2 { font-size: 1.8rem; margin: 4px 0; color: var(--start); }
-dialog.baby img, dialog.baby svg { display: block; margin: 10px auto; width: min(260px, 70vw); height: auto; border-radius: 12px; }
+dialog.baby img, dialog.baby svg { display: block; margin: 10px auto; width: min(440px, 80vw); height: auto; border-radius: 12px; }
 dialog.baby[open] { animation: pop .5s cubic-bezier(.2, 1.6, .4, 1); }
 @keyframes pop { from { transform: scale(.6); opacity: 0; } }
