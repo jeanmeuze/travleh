@@ -13,12 +13,36 @@ const JAN = [
   ['Zonnebeke', 'Harelbeke'],
 ];
 const JAN_BASE = '/verjaardagjan';
+// Special: Wervik → Kortrijk (materniteit), met afgesloten gemeentes die je pas ontdekt als je ze probeert
+const SPECIAL = { start: 'Wervik', end: 'Kortrijk' };
+const OBSTACLES = {
+  Menen: '🔥 Menen is afgezet wegens een brand bij Galloo. De rookpluim is tot in Halluin te zien!',
+  Wevelgem: '🚴 Gent-Wevelgem komt eraan: alle wegen in Wevelgem zijn afgezet voor de renners.',
+  Ledegem: '✊ Stakingspost aan de rotonde in Ledegem. Niemand passeert – ook geen hoogzwangere vrouw.',
+  Lendelede: '🚧 Wegenwerken in Lendelede. De omleiding leidt… terug naar Lendelede.',
+  Kuurne: '⛴️ Kuurne: de brug over de Leie staat open voor een binnenschip. Dat kan nog even duren.',
+  Izegem: '🚜 Tractorbetoging in Izegem: honderd boeren blokkeren het centrum.',
+  Ingelmunster: '🍺 Ingelmunster: een vrachtwagen vol bierbakken is gekanteld. Iedereen helpt opruimen, niemand heeft haast.',
+};
+const FLAVOR = [
+  'Ze puft: "Rijden, niet praten!"',
+  'Weeën om de vijf minuten…',
+  'De gps zegt: "herberekenen…"',
+  'Mama is al gebeld: "we zijn onderweg!"',
+  'Het tanklampje begint te knipperen…',
+  'Ze knijpt je hand fijn.',
+  'Iemand vraagt of de valies wel mee is.',
+  '"Is het nog ver?!"',
+];
 
 const data = await fetch('/data.json').then((r) => r.json());
 const M = data.municipalities;
 const byId = new Map(M.map((m) => [m.id, m]));
 const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]/g, '');
 const byNorm = new Map(M.map((m) => [norm(m.name), m]));
+let blocked = new Set(); // afgesloten gemeentes (enkel in special-modus)
+const isBlocked = (id) => blocked.has(id);
+function setBlocked(ids) { blocked = new Set(ids); distCache.clear(); }
 
 // ---------- graaf ----------
 const distCache = new Map();
@@ -28,7 +52,7 @@ function distFrom(id) {
   const q = [id];
   while (q.length) {
     const c = q.shift();
-    for (const n of byId.get(c).n) if (!d.has(n)) { d.set(n, d.get(c) + 1); q.push(n); }
+    for (const n of byId.get(c).n) if (!d.has(n) && !blocked.has(n)) { d.set(n, d.get(c) + 1); q.push(n); }
   }
   distCache.set(id, d);
   return d;
@@ -80,6 +104,14 @@ function newGame({ start, end, mode, day }) {
 }
 
 function initFromUrl() {
+  if (/^\/special\/?$/i.test(location.pathname)) {
+    setBlocked(Object.keys(OBSTACLES).map((n) => byNorm.get(norm(n)).id));
+    const [start, end] = [SPECIAL.start, SPECIAL.end].map((n) => byNorm.get(norm(n)).id);
+    const saved = load().special;
+    if (saved && saved.start === start && saved.end === end) game = saved;
+    else { newGame({ start, end, mode: 'special' }); game.maxGuesses = 999; }
+    return;
+  }
   const jm = location.pathname.match(/^\/verjaardagjan(?:\/(\d+))?\/?$/i);
   if (jm) {
     let lvl = Number(jm[1] || 1);
@@ -109,6 +141,12 @@ function initFromUrl() {
 }
 
 function persist() {
+  if (game.mode === 'special') {
+    const st = load();
+    st.special = game;
+    save(st);
+    return;
+  }
   if (game.mode === 'jan') {
     const st = load();
     st.jan = st.jan || {};
@@ -129,7 +167,7 @@ const scoreOf = (id) => {
 };
 
 function connected() {
-  const S = new Set([game.start, game.end, ...game.guesses]);
+  const S = new Set([game.start, game.end, ...game.guesses.filter((id) => !isBlocked(id))]);
   const seen = new Set([game.start]);
   const q = [game.start];
   while (q.length) {
@@ -245,7 +283,7 @@ function renderMap(flashId) {
     let cls = 'm hidden';
     if (id === game.start) cls = 'm start';
     else if (id === game.end) cls = 'm end';
-    else if (game.guesses.includes(id)) cls = 'm g' + scoreOf(id);
+    else if (game.guesses.includes(id)) cls = isBlocked(id) ? 'm blocked' : 'm g' + scoreOf(id);
     else if (revealed.includes(id)) cls = 'm reveal';
     if (id === flashId) cls += ' flash';
     el.setAttribute('class', cls);
@@ -321,8 +359,16 @@ function submit() {
   input.value = '';
   list.hidden = true;
   active = -1;
+  if (isBlocked(m.id)) {
+    msg(OBSTACLES[m.name] + ' Zoek een omweg!');
+    persist();
+    render(m.id);
+    shake();
+    return;
+  }
   const sc = scoreOf(m.id);
-  msg(['', 'Ligt op een kortste route!', 'Bijna – één omweg.', 'Twee omwegen.', 'Dat ligt ver van de route.'][sc]);
+  msg(['', 'Ligt op een kortste route!', 'Bijna – één omweg.', 'Twee omwegen.', 'Dat ligt ver van de route.'][sc]
+    + (game.mode === 'special' ? ' ' + FLAVOR[game.guesses.length % FLAVOR.length] : ''));
   if (connected()) { game.done = true; game.won = true; }
   else if (game.guesses.length >= game.maxGuesses) { game.done = true; }
   persist();
@@ -330,19 +376,36 @@ function submit() {
   if (game.done) finish();
 }
 
+// special: elke rit kost tijd, een afgesloten weg nog meer
+const minutes = () => game.guesses.reduce((t, id) => t + (isBlocked(id) ? 12 : 6), 0);
+const fmtTime = (m) => (m >= 60 ? `${Math.floor(m / 60)}u ${String(m % 60).padStart(2, '0')}` : `${m} min`);
+function shake() {
+  const el = document.querySelector('.mapbox');
+  el.classList.remove('shake');
+  void el.offsetWidth;
+  el.classList.add('shake');
+}
+
 function render(flashId) {
+  const sp = game.mode === 'special';
   $('startName').textContent = byId.get(game.start).name;
   $('endName').textContent = byId.get(game.end).name;
+  $('titlePre').textContent = sp ? '👶 Snel! Ik moet dringend' : 'Vandaag wil ik';
+  $('titlePost').textContent = sp ? ' 🏥' : '';
   const left = game.maxGuesses - game.guesses.length;
-  $('counter').textContent = game.done ? '' : `Nog ${left} ${left === 1 ? 'gok' : 'gokken'} · kortste route: ${game.D - 1} ${game.D - 1 === 1 ? 'gemeente' : 'gemeentes'}`;
+  $('counter').textContent = game.done ? ''
+    : sp ? `Onderweg: ${fmtTime(minutes())} · ${game.guesses.filter(isBlocked).length} wegversperringen`
+    : `Nog ${left} ${left === 1 ? 'gok' : 'gokken'} · kortste route: ${game.D - 1} ${game.D - 1 === 1 ? 'gemeente' : 'gemeentes'}`;
   $('guessList').replaceChildren(...game.guesses.map((id) => {
     const li = document.createElement('li');
-    li.className = 'g' + scoreOf(id);
-    li.textContent = byId.get(id).name;
+    li.className = isBlocked(id) ? 'blocked' : 'g' + scoreOf(id);
+    li.textContent = (isBlocked(id) ? '🚧 ' : '') + byId.get(id).name;
+    if (isBlocked(id)) li.title = OBSTACLES[byId.get(id).name];
     return li;
   }));
   $('play').querySelector('form').hidden = game.done;
   $('hintBtn').hidden = $('giveUpBtn').hidden = game.done;
+  if (sp) $('giveUpBtn').hidden = true;
   renderMap(flashId);
   fitTo(visibleIds());
 }
@@ -363,6 +426,7 @@ function reach(from, S) {
 function marks() {
   const S = new Set([game.start, game.end]);
   return game.guesses.map((id) => {
+    if (isBlocked(id)) return '🚧';
     const sc = scoreOf(id);
     let e = EMOJI[sc];
     if (sc === 1) {
@@ -377,6 +441,7 @@ function squares() { return marks().join(''); }
 
 function finish() {
   const optimal = game.D - 1;
+  const real = game.guesses.filter((id) => !isBlocked(id)).length;
   if (!game.won) revealed = bestPath().filter((id) => !game.guesses.includes(id));
   renderMap();
   fitTo(visibleIds());
@@ -385,7 +450,9 @@ function finish() {
   $('resultTitle').textContent = game.won
     ? (game.guesses.length === optimal ? 'Perfect! 🎉' : 'Gelukt! 🧭')
     : 'Helaas…';
-  $('resultText').textContent = game.won
+  $('resultText').textContent = game.mode === 'special'
+    ? `Je raakte van ${byId.get(game.start).name} in ${byId.get(game.end).name} na ${fmtTime(minutes())}, ${real} gemeentes en ${game.guesses.length - real} wegversperringen (minimum ${optimal} gemeentes). Een kortste omweg: ${route}.`
+    : game.won
     ? `Je reisde van ${byId.get(game.start).name} naar ${byId.get(game.end).name} met ${game.guesses.length} ${game.guesses.length === 1 ? 'gok' : 'gokken'} (minimum ${optimal}). Een kortste route: ${route}.`
     : `Een kortste route was: ${route}.`;
   $('squares').textContent = squares();
@@ -395,6 +462,11 @@ function finish() {
     $('nextBtn').href = `${JAN_BASE}/${next}`;
     if (next > JAN.length) $('resultTitle').textContent += ' Alle opdrachten gedaan – gelukkige verjaardag, Jan! 🎂';
   } else $('nextBtn').hidden = true;
+  if (game.mode === 'special') {
+    $('resultTitle').textContent = 'Oef, net op tijd! 👶';
+    $('babyTime').textContent = `Na ${fmtTime(minutes())} onderweg en ${game.guesses.length - real} wegversperringen…`;
+    if (!game.babySeen) { game.babySeen = true; persist(); setTimeout(() => $('babyPop').showModal(), 900); }
+  }
   $('msg').textContent = '';
   setTimeout(() => $('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 300);
   if (game.mode === 'daily' && !game.statsCounted) {
@@ -421,9 +493,10 @@ function finish() {
 function shareText() {
   const tag = game.mode === 'daily' ? `#travleh #${dayNumber(game.day)}`
     : game.mode === 'jan' ? `#travleh 🎂 Jan ${game.day}/${JAN.length}`
+    : game.mode === 'special' ? `#travleh 👶 ${byId.get(game.start).name} → ${byId.get(game.end).name}`
     : `#travleh ${byId.get(game.start).name} → ${byId.get(game.end).name}`;
-  const extra = game.guesses.length - (game.D - 1);
-  const res = game.won ? (extra === 0 ? '(perfect)' : `+${extra}`) : '❌';
+  const extra = game.guesses.filter((id) => !isBlocked(id)).length - (game.D - 1);
+  const res = game.mode === 'special' ? `${fmtTime(minutes())}, +${extra}` : game.won ? (extra === 0 ? '(perfect)' : `+${extra}`) : '❌';
   const hints = game.hints ? ` (${game.hints} hint${game.hints > 1 ? 's' : ''})` : '';
   return `${tag} ${res}${hints}\n${squares()}\n${location.origin}${location.pathname}`;
 }
@@ -438,6 +511,7 @@ async function share(text) {
 }
 $('shareResultBtn').onclick = () => share(shareText());
 $('shareRouteBtn').onclick = () => {
+  if (game.mode === 'special') { share(`Raak jij op tijd van Wervik naar de materniteit in Kortrijk? 👶 ${location.origin}/special`); return; }
   const u = new URL(location.origin + (game.mode === 'jan' ? '/' : location.pathname));
   u.searchParams.set('van', byId.get(game.start).name);
   u.searchParams.set('naar', byId.get(game.end).name);
@@ -446,7 +520,8 @@ $('shareRouteBtn').onclick = () => {
 
 function practice() {
   const [start, end] = pickPair(Math.random);
-  history.replaceState(null, '', location.pathname);
+  history.replaceState(null, '', game.mode === 'special' ? '/' : location.pathname);
+  setBlocked([]);
   newGame({ start, end, mode: 'practice' });
   revealed = [];
   $('janNav').hidden = true;
@@ -507,5 +582,8 @@ fitTo(visibleIds(), false);
 if (game.done) finish();
 else if (game.mode === 'jan') msg(`Opdracht ${game.day} van ${JAN.length} – gelukkige verjaardag, Jan!`);
 else if (game.mode === 'custom') msg('Route van een vriend – telt niet mee voor je statistieken.');
+else if (game.mode === 'special') msg('Het is zover! Rijd zo snel mogelijk naar de materniteit in Kortrijk.');
 const st = load();
-if (!st.seenHelp) { $('help').showModal(); st.seenHelp = true; save(st); }
+if (game.mode === 'special') { if (!game.done) $('specialIntro').showModal(); }
+else if (!st.seenHelp) { $('help').showModal(); st.seenHelp = true; save(st); }
+$('babyAgain').onclick = () => { const s2 = load(); delete s2.special; save(s2); location.reload(); };

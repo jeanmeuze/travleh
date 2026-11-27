@@ -95,3 +95,14 @@ dialog::backdrop { background: rgba(0,0,0,.55); }
 .jan a.done { border-color: var(--g1); color: var(--g1); }
 .jan a.cur { background: var(--start); border-color: var(--start); color: #1f1d1b; font-weight: 700; }
 a.btn { text-decoration: none; display: inline-block; }
+
+/* special: Wervik → Kortrijk */
+#map path.blocked { fill: #5a2a28; stroke: var(--g4); stroke-dasharray: 4 3; }
+.guesses li.blocked { border-color: #5a2a28; color: var(--muted); text-decoration: line-through; cursor: help; }
+.mapbox.shake { animation: shake .45s; }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+dialog.baby { text-align: center; }
+dialog.baby h2 { font-size: 1.8rem; margin: 4px 0; color: var(--start); }
+dialog.baby img, dialog.baby svg { display: block; margin: 10px auto; width: min(260px, 70vw); height: auto; border-radius: 12px; }
+dialog.baby[open] { animation: pop .5s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes pop { from { transform: scale(.6); opacity: 0; } }

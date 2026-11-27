@@ -4,7 +4,17 @@
   "outputDirectory": "public",
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/verjaardagjan", "destination": "/" },
-    { "source": "/verjaardagjan/:n", "destination": "/" }
+    {
+      "source": "/verjaardagjan",
+      "destination": "/"
+    },
+    {
+      "source": "/verjaardagjan/:n",
+      "destination": "/"
+    },
+    {
+      "source": "/special",
+      "destination": "/"
+    }
   ]
 }
