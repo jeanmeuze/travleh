@@ -13,27 +13,17 @@ const JAN = [
   ['Zonnebeke', 'Harelbeke'],
 ];
 const JAN_BASE = '/verjaardagjan';
-// Special: Wervik → Kortrijk (materniteit), met afgesloten gemeentes die je pas ontdekt als je ze probeert
+// Special: Wervik → Kortrijk, met afgesloten gemeentes die je pas ontdekt als je ze probeert
 const SPECIAL = { start: 'Wervik', end: 'Kortrijk' };
 const OBSTACLES = {
   Menen: '🔥 Menen is afgezet wegens een brand bij Galloo. De rookpluim is tot in Halluin te zien!',
   Wevelgem: '🚴 Gent-Wevelgem komt eraan: alle wegen in Wevelgem zijn afgezet voor de renners.',
-  Ledegem: '✊ Stakingspost aan de rotonde in Ledegem. Niemand passeert – ook geen hoogzwangere vrouw.',
+  Ledegem: '✊ Stakingspost aan de rotonde in Ledegem. Niemand komt erdoor.',
   Lendelede: '🚧 Wegenwerken in Lendelede. De omleiding leidt… terug naar Lendelede.',
   Kuurne: '⛴️ Kuurne: de brug over de Leie staat open voor een binnenschip. Dat kan nog even duren.',
   Izegem: '🚜 Tractorbetoging in Izegem: honderd boeren blokkeren het centrum.',
   Ingelmunster: '🍺 Ingelmunster: een vrachtwagen vol bierbakken is gekanteld. Iedereen helpt opruimen, niemand heeft haast.',
 };
-const FLAVOR = [
-  'Ze puft: "Rijden, niet praten!"',
-  'Weeën om de vijf minuten…',
-  'De gps zegt: "herberekenen…"',
-  'Mama is al gebeld: "we zijn onderweg!"',
-  'Het tanklampje begint te knipperen…',
-  'Ze knijpt je hand fijn.',
-  'Iemand vraagt of de valies wel mee is.',
-  '"Is het nog ver?!"',
-];
 
 const data = await fetch('/data.json').then((r) => r.json());
 const M = data.municipalities;
@@ -367,8 +357,7 @@ function submit() {
     return;
   }
   const sc = scoreOf(m.id);
-  msg(['', 'Ligt op een kortste route!', 'Bijna – één omweg.', 'Twee omwegen.', 'Dat ligt ver van de route.'][sc]
-    + (game.mode === 'special' ? ' ' + FLAVOR[game.guesses.length % FLAVOR.length] : ''));
+  msg(['', 'Ligt op een kortste route!', 'Bijna – één omweg.', 'Twee omwegen.', 'Dat ligt ver van de route.'][sc]);
   if (connected()) { game.done = true; game.won = true; }
   else if (game.guesses.length >= game.maxGuesses) { game.done = true; }
   persist();
@@ -377,6 +366,7 @@ function submit() {
 }
 
 // special: elke rit kost tijd, een afgesloten weg nog meer
+const wv = (n) => `${n} ${n === 1 ? "wegversperring" : "wegversperringen"}`;
 const minutes = () => game.guesses.reduce((t, id) => t + (isBlocked(id) ? 12 : 6), 0);
 const fmtTime = (m) => (m >= 60 ? `${Math.floor(m / 60)}u ${String(m % 60).padStart(2, '0')}` : `${m} min`);
 function shake() {
@@ -390,11 +380,9 @@ function render(flashId) {
   const sp = game.mode === 'special';
   $('startName').textContent = byId.get(game.start).name;
   $('endName').textContent = byId.get(game.end).name;
-  $('titlePre').textContent = sp ? '👶 Snel! Ik moet dringend' : 'Vandaag wil ik';
-  $('titlePost').textContent = sp ? ' 🏥' : '';
   const left = game.maxGuesses - game.guesses.length;
   $('counter').textContent = game.done ? ''
-    : sp ? `Onderweg: ${fmtTime(minutes())} · ${game.guesses.filter(isBlocked).length} wegversperringen`
+    : sp ? `${game.guesses.length} ${game.guesses.length === 1 ? 'gok' : 'gokken'} · ${wv(game.guesses.filter(isBlocked).length)}`
     : `Nog ${left} ${left === 1 ? 'gok' : 'gokken'} · kortste route: ${game.D - 1} ${game.D - 1 === 1 ? 'gemeente' : 'gemeentes'}`;
   $('guessList').replaceChildren(...game.guesses.map((id) => {
     const li = document.createElement('li');
@@ -451,7 +439,7 @@ function finish() {
     ? (game.guesses.length === optimal ? 'Perfect! 🎉' : 'Gelukt! 🧭')
     : 'Helaas…';
   $('resultText').textContent = game.mode === 'special'
-    ? `Je raakte van ${byId.get(game.start).name} in ${byId.get(game.end).name} na ${fmtTime(minutes())}, ${real} gemeentes en ${game.guesses.length - real} wegversperringen (minimum ${optimal} gemeentes). Een kortste omweg: ${route}.`
+    ? `Je raakte van ${byId.get(game.start).name} in ${byId.get(game.end).name} na ${fmtTime(minutes())}, ${real} gemeentes en ${wv(game.guesses.length - real)} (minimum ${optimal} gemeentes). Een kortste omweg: ${route}.`
     : game.won
     ? `Je reisde van ${byId.get(game.start).name} naar ${byId.get(game.end).name} met ${game.guesses.length} ${game.guesses.length === 1 ? 'gok' : 'gokken'} (minimum ${optimal}). Een kortste route: ${route}.`
     : `Een kortste route was: ${route}.`;
@@ -464,7 +452,7 @@ function finish() {
   } else $('nextBtn').hidden = true;
   if (game.mode === 'special') {
     $('resultTitle').textContent = 'Oef, net op tijd! 👶';
-    $('babyTime').textContent = `Na ${fmtTime(minutes())} onderweg en ${game.guesses.length - real} wegversperringen…`;
+    $('babyTime').textContent = `Na ${fmtTime(minutes())} onderweg en ${wv(game.guesses.length - real)}…`;
     if (!game.babySeen) { game.babySeen = true; persist(); setTimeout(() => $('babyPop').showModal(), 900); }
   }
   $('msg').textContent = '';
@@ -493,7 +481,7 @@ function finish() {
 function shareText() {
   const tag = game.mode === 'daily' ? `#travleh #${dayNumber(game.day)}`
     : game.mode === 'jan' ? `#travleh 🎂 Jan ${game.day}/${JAN.length}`
-    : game.mode === 'special' ? `#travleh 👶 ${byId.get(game.start).name} → ${byId.get(game.end).name}`
+    : game.mode === 'special' ? `#travleh 🚧 ${byId.get(game.start).name} → ${byId.get(game.end).name}`
     : `#travleh ${byId.get(game.start).name} → ${byId.get(game.end).name}`;
   const extra = game.guesses.filter((id) => !isBlocked(id)).length - (game.D - 1);
   const res = game.mode === 'special' ? `${fmtTime(minutes())}, +${extra}` : game.won ? (extra === 0 ? '(perfect)' : `+${extra}`) : '❌';
@@ -511,7 +499,7 @@ async function share(text) {
 }
 $('shareResultBtn').onclick = () => share(shareText());
 $('shareRouteBtn').onclick = () => {
-  if (game.mode === 'special') { share(`Raak jij op tijd van Wervik naar de materniteit in Kortrijk? 👶 ${location.origin}/special`); return; }
+  if (game.mode === 'special') { share(`Raak jij met travleh van Wervik in Kortrijk? Opgelet voor wegversperringen! 🚧 ${location.origin}/special`); return; }
   const u = new URL(location.origin + (game.mode === 'jan' ? '/' : location.pathname));
   u.searchParams.set('van', byId.get(game.start).name);
   u.searchParams.set('naar', byId.get(game.end).name);
@@ -582,8 +570,6 @@ fitTo(visibleIds(), false);
 if (game.done) finish();
 else if (game.mode === 'jan') msg(`Opdracht ${game.day} van ${JAN.length} – gelukkige verjaardag, Jan!`);
 else if (game.mode === 'custom') msg('Route van een vriend – telt niet mee voor je statistieken.');
-else if (game.mode === 'special') msg('Het is zover! Rijd zo snel mogelijk naar de materniteit in Kortrijk.');
 const st = load();
-if (game.mode === 'special') { if (!game.done) $('specialIntro').showModal(); }
-else if (!st.seenHelp) { $('help').showModal(); st.seenHelp = true; save(st); }
+if (!st.seenHelp) { $('help').showModal(); st.seenHelp = true; save(st); }
 $('babyAgain').onclick = () => { const s2 = load(); delete s2.special; save(s2); location.reload(); };
