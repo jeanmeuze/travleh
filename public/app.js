@@ -450,6 +450,7 @@ function finish() {
     $('nextBtn').href = `${JAN_BASE}/${next}`;
     if (next > JAN.length) $('resultTitle').textContent += ' Alle opdrachten gedaan – gelukkige verjaardag, Jan! 🎂';
   } else $('nextBtn').hidden = true;
+  $('replayBtn').hidden = game.mode !== 'special';
   if (game.mode === 'special') {
     $('resultTitle').textContent = 'Oef, net op tijd! 👶';
     $('babyTime').textContent = `Na ${fmtTime(minutes())} onderweg en ${wv(game.guesses.length - real)}…`;
@@ -572,4 +573,5 @@ else if (game.mode === 'jan') msg(`Opdracht ${game.day} van ${JAN.length} – ge
 else if (game.mode === 'custom') msg('Route van een vriend – telt niet mee voor je statistieken.');
 const st = load();
 if (!st.seenHelp) { $('help').showModal(); st.seenHelp = true; save(st); }
-$('babyAgain').onclick = () => { const s2 = load(); delete s2.special; save(s2); location.reload(); };
+function replaySpecial() { const s2 = load(); delete s2.special; save(s2); location.reload(); }
+$('babyAgain').onclick = $('replayBtn').onclick = replaySpecial;
